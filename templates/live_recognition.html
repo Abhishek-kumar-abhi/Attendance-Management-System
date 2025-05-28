@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Recognition System - Live Recognition</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/styles.css') }}" rel="stylesheet">
+    <style>
+        .video-container {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .video-feed {
+            max-width: 100%;
+            border: 3px solid #28a745;
+            border-radius: 5px;
+        }
+        .video-container {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .video-feed {
+            max-width: 100%;
+            border: 3px solid #28a745;
+            border-radius: 5px;
+        }
+        .info-panel {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .camera-error {
+            display: none;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            text-align: center;
+            width: 80%;
+            z-index: 100;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 2rem;
+            height: 2rem;
+            vertical-align: text-bottom;
+            border: 0.25em solid currentColor;
+            border-right-color: transparent;
+            border-radius: 50%;
+            animation: spinner-border .75s linear infinite;
+        }
+        @keyframes spinner-border {
+            to { transform: rotate(360deg); }
+        }
+        .retry-button {
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Connecting lines background elements -->
+    <div class="connecting-line" style="top: 15%; left: 5%; width: 25%;"></div>
+    <div class="connecting-line" style="top: 45%; left: 60%; width: 35%;"></div>
+    <div class="connecting-line" style="top: 75%; right: 10%; width: 20%;"></div>
+    
+    <!-- Particles background -->
+    <div class="particles">
+        <div class="particle" style="width: 10px; height: 10px; top: 20%; left: 30%;"></div>
+        <div class="particle" style="width: 15px; height: 15px; top: 60%; left: 70%;"></div>
+        <div class="particle" style="width: 8px; height: 8px; top: 40%; left: 40%;"></div>
+        <div class="particle" style="width: 12px; height: 12px; top: 80%; left: 20%;"></div>
+        <div class="particle" style="width: 6px; height: 6px; top: 10%; left: 80%;"></div>
+    </div>
+    
+    <div class="container mt-4">
+        <div class="card-container">
+            <div class="header-modern">
+                <h2>Live Face Recognition</h2>
+                <div>
+                    <a href="{{ url_for('admin_dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+                </div>
+            </div>
+            
+            <div class="video-container">
+                <img id="videoFeed" src="{{ url_for('video_feed') }}" class="video-feed" alt="Live Video Feed" onerror="handleVideoError()">
+                <div id="cameraError" class="camera-error">
+                    <h4>Camera Access Error</h4>
+                    <p>Unable to access the camera. This could be due to:</p>
+                    <ul class="text-start">
+                        <li>Camera permissions not granted in browser</li>
+                        <li>Camera in use by another application</li>
+                        <li>No camera connected to your device</li>
+                    </ul>
+                    <div>
+                        <button id="retryButton" class="btn btn-primary retry-button" onclick="retryVideoFeed()">Retry Camera Access</button>
+                    </div>
+                    <div class="mt-3">
+                        <p><strong>Safari Users:</strong> Make sure to grant camera permissions in:</p>
+                        <p>Safari → Settings → Websites → Camera → Allow for this website</p>
+                    </div>
+                </div>
+                <div id="loadingIndicator" class="camera-error" style="display: block;">
+                    <div class="loading-spinner"></div>
+                    <p class="mt-2">Connecting to camera...</p>
+                    <p class="small">If this takes too long, check camera permissions</p>
+                </div>
+            </div>
+            
+            <div class="info-panel">
+                <h4>Recognition Information</h4>
+                <p>The system is automatically marking attendance when a registered face is recognized with high confidence.</p>
+                <p>Green boxes indicate recognized faces, while red boxes indicate unknown faces.</p>
+                <p>The confidence level is shown next to each recognized face.</p>
+                <div class="alert alert-info">
+                    <strong>Note:</strong> Attendance is marked only once per day for each user.
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Check if browser supports getUserMedia (for camera access)
+        function checkCameraSupport() {
+            return !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+        }
+        
+        // Handle video feed errors
+        function handleVideoError() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+            document.getElementById('cameraError').style.display = 'block';
+            document.getElementById('videoFeed').style.opacity = '0.3';
+        }
+        
+        // Retry loading the video feed
+        function retryVideoFeed() {
+            document.getElementById('cameraError').style.display = 'none';
+            document.getElementById('loadingIndicator').style.display = 'block';
+            document.getElementById('videoFeed').style.opacity = '1';
+            
+            // Request camera permission explicitly
+            if (checkCameraSupport()) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        // Permission granted, reload the video feed
+                        stream.getTracks().forEach(track => track.stop()); // Stop the stream
+                        document.getElementById('videoFeed').src = "{{ url_for('video_feed') }}?t=" + new Date().getTime();
+                        setTimeout(function() {
+                            document.getElementById('loadingIndicator').style.display = 'none';
+                        }, 3000);
+                    })
+                    .catch(function(err) {
+                        console.error("Camera access error:", err);
+                        handleVideoError();
+                    });
+            } else {
+                // Browser doesn't support getUserMedia
+                handleVideoError();
+            }
+        }
+        
+        // Check if video feed is working
+        document.getElementById('videoFeed').onload = function() {
+            document.getElementById('loadingIndicator').style.display = 'none';
+        };
+        
+        // Set a timeout to check if video feed is working
+        setTimeout(function() {
+            if (document.getElementById('loadingIndicator').style.display === 'block') {
+                handleVideoError();
+            }
+        }, 10000); // 10 seconds timeout
+        
+        // Request camera permission on page load for Safari
+        window.onload = function() {
+            if (checkCameraSupport() && /^((?!chrome|android).)*safari/i.test(navigator.userAgent)) {
+                navigator.mediaDevices.getUserMedia({ video: true })
+                    .then(function(stream) {
+                        // Permission granted, stop the stream (we don't need it, just the permission)
+                        stream.getTracks().forEach(track => track.stop());
+                    })
+                    .catch(function(err) {
+                        console.error("Safari camera access error:", err);
+                    });
+            }
+        };
+    </script>
+</body>
+</html>
